@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#14111f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>元素决斗</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 主菜单 -->
+  <section id="menu" class="screen active">
+    <div class="menu-inner">
+      <h1 class="logo">元素决斗<small>ELEMENTAL DUEL</small></h1>
+      <p class="tagline">火 · 水 · 风 · 土，再加一门职业秘术。<br>20 张牌全部明牌，胜负只在取舍与站位。</p>
+      <h2>选择你的职业</h2>
+      <div id="class-list" class="class-list"></div>
+      <h2>对手难度</h2>
+      <div id="diff-list" class="seg">
+        <button data-v="easy">新手</button>
+        <button data-v="normal" class="on">普通</button>
+        <button data-v="hard">困难</button>
+      </div>
+      <button id="btn-start" class="btn primary big">开始决斗</button>
+      <button id="btn-rules" class="btn ghost">规则说明</button>
+    </div>
+  </section>
+
+  <!-- 对局 -->
+  <section id="game" class="screen">
+    <header class="hero enemy" data-hero="1">
+      <div class="hero-row">
+        <div class="avatar"></div>
+        <div class="hero-info">
+          <div class="hero-name"></div>
+          <div class="hpbar"><i></i><span></span></div>
+        </div>
+        <button class="icon-btn" id="btn-menu" aria-label="菜单">☰</button>
+      </div>
+      <div class="mana-row"></div>
+    </header>
+
+    <div class="board enemy" data-p="1"></div>
+    <div class="midline"><span id="turn-hint"></span></div>
+    <div class="board player" data-p="0"></div>
+
+    <div class="hero player" data-hero="0">
+      <div class="hero-row">
+        <div class="avatar"></div>
+        <div class="hero-info">
+          <div class="hero-name"></div>
+          <div class="hpbar"><i></i><span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hand">
+      <div class="detail" id="detail"></div>
+      <div class="tabs" id="tabs"></div>
+      <div class="cards" id="cards"></div>
+    </div>
+
+    <footer class="actions">
+      <button class="btn small" id="btn-log">📜 战报</button>
+      <button class="btn small" id="btn-foe">👁 对手牌</button>
+      <button class="btn primary" id="btn-pass">跳过出牌 ▶</button>
+    </footer>
+    <div id="fx"></div>
+    <div id="banner"></div>
+  </section>
+
+  <!-- 底部弹层 -->
+  <div id="sheet" class="sheet" aria-hidden="true">
+    <div class="sheet-panel">
+      <div class="sheet-head"><b id="sheet-title"></b><button class="icon-btn" id="sheet-close">✕</button></div>
+      <div class="sheet-body" id="sheet-body"></div>
+    </div>
+  </div>
+
+  <script type="module" src="js/ui.js"></script>
+</body>
+</html>

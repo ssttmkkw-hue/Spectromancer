@@ -1,0 +1,1 @@
+{"type":"module","name":"elemental-duel","private":true,"scripts":{"test":"node tests/sim.mjs 200","sim":"node tests/sim.mjs","cards":"node tools/gen-card-doc.mjs > docs/03-卡牌数据表.md","serve":"python3 -m http.server 8080"}}
