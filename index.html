@@ -14,7 +14,7 @@
   <section id="menu" class="screen active">
     <div class="menu-inner">
       <h1 class="logo">元素决斗<small>ELEMENTAL DUEL</small></h1>
-      <p class="tagline">火 · 水 · 风 · 土，再加一门职业秘术。<br>20 张牌全部明牌，胜负只在取舍与站位。</p>
+      <p class="tagline">火 · 水 · 风 · 土，再加一门职业秘术。<br>25 张牌全部明牌，胜负只在取舍与站位。</p>
       <h2>选择你的职业</h2>
       <div id="class-list" class="class-list"></div>
       <h2>对手难度</h2>
@@ -31,15 +31,13 @@
   <!-- 对局 -->
   <section id="game" class="screen">
     <header class="hero enemy" data-hero="1">
-      <div class="hero-row">
-        <div class="avatar"></div>
-        <div class="hero-info">
-          <div class="hero-name"></div>
-          <div class="hpbar"><i></i><span></span></div>
-        </div>
-        <button class="icon-btn" id="btn-menu" aria-label="菜单">☰</button>
+      <div class="avatar"></div>
+      <div class="hero-info">
+        <div class="hero-name"></div>
+        <div class="hpbar"><i></i><span></span></div>
       </div>
       <div class="mana-row"></div>
+      <button class="icon-btn" id="btn-menu" aria-label="菜单">☰</button>
     </header>
 
     <div class="board enemy" data-p="1"></div>
@@ -47,19 +45,16 @@
     <div class="board player" data-p="0"></div>
 
     <div class="hero player" data-hero="0">
-      <div class="hero-row">
-        <div class="avatar"></div>
-        <div class="hero-info">
-          <div class="hero-name"></div>
-          <div class="hpbar"><i></i><span></span></div>
-        </div>
+      <div class="avatar"></div>
+      <div class="hero-info">
+        <div class="hero-name"></div>
+        <div class="hpbar"><i></i><span></span></div>
       </div>
     </div>
 
     <div class="hand">
       <div class="detail" id="detail"></div>
-      <div class="tabs" id="tabs"></div>
-      <div class="cards" id="cards"></div>
+      <div class="grid" id="grid"></div>
     </div>
 
     <footer class="actions">
@@ -69,6 +64,7 @@
     </footer>
     <div id="fx"></div>
     <div id="banner"></div>
+    <div id="tip"></div>
   </section>
 
   <!-- 底部弹层 -->

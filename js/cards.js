@@ -1,5 +1,5 @@
 // 卡牌数据 —— 《元素决斗》原创卡组
-// 每个元素卡池 8 张，按费用分 4 档（每档 2 张），开局每档随机抽 1 张 → 每元素 4 张，共 20 张。
+// 每个元素卡池 10 张，分 5 组（每组 2 张），开局每组随机抽 1 张 → 每元素 5 张，共 25 张。
 // 钩子函数签名见 docs/02-开发文档.md 「卡牌效果钩子」一节。
 
 export const ELEMENTS = ['fire', 'water', 'air', 'earth', 'special'];
@@ -161,8 +161,8 @@ const cardList = [
       text: '对一个敌方生物造成 6 点伤害，你的英雄恢复等同于实际伤害的生命。',
       cast(g, p, t) { const dealt = g.damage(t, g.spell(p, 6), { kind: 'spell', p }); g.healHero(p, dealt); } }),
   C({ id: 'crypt_warden', el: 'special', cls: 'shadow', tier: 2, cost: 4, name: '墓穴守望者', icon: '⚰️', atk: 2, hp: 15,
-      text: '每当任意其他生物死亡：你获得 1 点暗影元素，你的英雄恢复 2 点生命。',
-      onAnyDeath(g, c, dead) { if (dead.uid !== c.uid) { g.addMana(c.p, 'special', 1); g.healHero(c.p, 2); } } }),
+      text: '每当任意其他生物死亡：你获得 1 点暗影元素，你的英雄恢复 1 点生命。',
+      onAnyDeath(g, c, dead) { if (dead.uid !== c.uid) { g.addMana(c.p, 'special', 1); g.healHero(c.p, 1); } } }),
   S({ id: 'blight', el: 'special', cls: 'shadow', tier: 2, cost: 4, name: '腐化之雾', icon: '☠️', target: 'none',
       text: '对所有敌方生物造成 4 点伤害，并使其攻击力永久 -1。',
       cast(g, p) { for (const t of enemies(g, p)) { g.damage(t, g.spell(p, 4), { kind: 'spell', p }); t.atk = Math.max(0, t.atk - 1); } } }),
@@ -188,8 +188,8 @@ const cardList = [
       text: '一个己方生物生命上限 +6，并恢复全部生命。',
       cast(g, p, t) { t.maxHp += 6; g.heal(t, 999); } }),
   C({ id: 'cannon_turret', el: 'special', cls: 'gear', tier: 2, cost: 4, name: '加农炮塔', icon: '🏯', atk: 0, hp: 18,
-      text: '不会攻击。你的回合开始时：对一个随机敌方生物造成 5 点伤害；若没有，则对敌方英雄造成 2 点伤害。',
-      onTurnStart(g, c) { const es = enemies(g, c.p); if (es.length) g.damage(es[g.rand(es.length)], 5, { kind: 'effect', p: c.p }); else g.damageHero(opp(c.p), 2, { kind: 'effect', p: c.p }); } }),
+      text: '不会攻击。你的回合开始时：对一个随机敌方生物造成 6 点伤害；若没有，则对敌方英雄造成 3 点伤害。',
+      onTurnStart(g, c) { const es = enemies(g, c.p); if (es.length) g.damage(es[g.rand(es.length)], 6, { kind: 'effect', p: c.p }); else g.damageHero(opp(c.p), 3, { kind: 'effect', p: c.p }); } }),
   S({ id: 'overclock', el: 'special', cls: 'gear', tier: 2, cost: 3, name: '超频', icon: '🔋', target: 'none',
       text: '你的四种基础元素各 +2。',
       cast(g, p) { for (const e of BASIC_ELEMENTS) g.addMana(p, e, 2); } }),
@@ -234,21 +234,82 @@ const cardList = [
       text: '所有己方生物恢复全部生命，攻击力永久 +2。',
       cast(g, p) { for (const c of allies(g, p)) { g.heal(c, 999); c.atk += 2; } } }),
 
+  // ===================== 第 5 组（每元素第 5 张牌的卡池） =====================
+  // 火
+  C({ id: 'salamander', el: 'fire', tier: 5, cost: 3, name: '喷火蜥蜴', icon: '🦎', atk: 3, hp: 11,
+      text: '每次攻击后：额外对敌方英雄造成 1 点伤害。',
+      onAttack(g, c) { g.damageHero(opp(c.p), 1, { kind: 'effect', p: c.p }); } }),
+  S({ id: 'fireball', el: 'fire', tier: 5, cost: 6, name: '爆裂火球', icon: '🔴', target: 'enemyCreature',
+      text: '对一个敌方生物造成 12 点伤害，并对其两侧的敌方生物造成 4 点伤害。',
+      cast(g, p, t) { const side = g.neighbors(t); g.damage(t, g.spell(p, 12), { kind: 'spell', p }); for (const n of side) g.damage(n, g.spell(p, 4), { kind: 'spell', p }); } }),
+  // 水
+  C({ id: 'ice_barrier', el: 'water', tier: 5, cost: 3, name: '寒冰屏障', icon: '🧊', atk: 0, hp: 16,
+      text: '不会攻击。召唤时：冻结正对面的敌方生物。',
+      onSummon(g, c) { const t = g.creatureAt(opp(c.p), c.slot); if (t) g.freeze(t, 1); } }),
+  C({ id: 'tide_turtle', el: 'water', tier: 5, cost: 7, name: '潮汐巨龟', icon: '🐢', atk: 4, hp: 28,
+      text: '召唤时：你的英雄恢复 8 点生命。受到的所有伤害 -1。', reduce: 1,
+      onSummon(g, c) { g.healHero(c.p, 8); } }),
+  // 风
+  S({ id: 'wind_blade', el: 'air', tier: 5, cost: 3, name: '风刃', icon: '🍃', target: 'enemyCreature',
+      text: '对一个敌方生物造成 7 点伤害；若将其消灭，再对敌方英雄造成 5 点伤害。',
+      cast(g, p, t) { g.damage(t, g.spell(p, 7), { kind: 'spell', p }); if (t.hp <= 0) g.damageHero(opp(p), g.spell(p, 5), { kind: 'spell', p }); } }),
+  C({ id: 'cloud_giant', el: 'air', tier: 5, cost: 9, name: '云巅巨人', icon: '☁️', atk: 6, hp: 26,
+      text: '飞行：攻击总是直接打向敌方英雄。',
+      attack(g, c) { g.damageHero(opp(c.p), g.atkOf(c), { kind: 'creature', p: c.p, src: c }); } }),
+  // 土
+  C({ id: 'thorn_vine', el: 'earth', tier: 5, cost: 3, name: '荆棘藤蔓', icon: '🌵', atk: 1, hp: 14,
+      text: '反伤：被生物伤害后，对攻击者造成 3 点伤害。',
+      onDamaged(g, c, n, src) { if (src.kind === 'creature' && src.src && src.src.hp > 0 && src.src.p !== c.p) g.damage(src.src, 3, { kind: 'effect', p: c.p }); } }),
+  S({ id: 'rock_spike', el: 'earth', tier: 5, cost: 6, name: '岩石尖刺', icon: '🗻', target: 'enemyCreature',
+      text: '对一个敌方生物造成 14 点伤害。',
+      cast(g, p, t) { g.damage(t, g.spell(p, 14), { kind: 'spell', p }); } }),
+  // 星辉祭司
+  S({ id: 'holy_shield', el: 'special', cls: 'radiant', tier: 5, cost: 5, name: '圣盾术', icon: '🔰', target: 'ownCreature',
+      text: '一个己方生物生命上限 +8 并恢复全部生命，此后受到的伤害永久 -2。',
+      cast(g, p, t) { t.maxHp += 8; g.heal(t, 999); t.reduce = (t.reduce || 0) + 2; } }),
+  C({ id: 'light_apostle', el: 'special', cls: 'radiant', tier: 5, cost: 7, name: '光明使徒', icon: '🙏', atk: 5, hp: 24,
+      text: '你的回合开始时：所有己方生物恢复 3 点生命。',
+      onTurnStart(g, c) { for (const a of allies(g, c.p)) g.heal(a, 3); } }),
+  // 暗影术士
+  C({ id: 'vampire_bat', el: 'special', cls: 'shadow', tier: 5, cost: 3, name: '吸血蝙蝠', icon: '🦇', atk: 3, hp: 10,
+      text: '每次攻击后：你的英雄恢复 2 点生命。',
+      onAttack(g, c) { g.healHero(c.p, 2); } }),
+  S({ id: 'soul_reap', el: 'special', cls: 'shadow', tier: 5, cost: 7, name: '灵魂收割', icon: '🌙', target: 'enemyCreature',
+      text: '消灭一个生命不高于 10 的敌方生物；否则对其造成 6 点伤害。',
+      cast(g, p, t) { if (t.hp <= 10) g.kill(t); else g.damage(t, g.spell(p, 6), { kind: 'spell', p }); } }),
+  // 机巧师
+  C({ id: 'bomb_bot', el: 'special', cls: 'gear', tier: 5, cost: 5, name: '自爆机器人', icon: '💣', atk: 3, hp: 15,
+      text: '死亡时：对所有敌方生物造成 4 点伤害。',
+      onDeath(g, c) { for (const t of enemies(g, c.p)) g.damage(t, 4, { kind: 'effect', p: c.p }); } }),
+  C({ id: 'gear_factory', el: 'special', cls: 'gear', tier: 5, cost: 7, name: '齿轮工厂', icon: '🏭', atk: 0, hp: 22,
+      text: '不会攻击。你的回合开始时：在一个随机己方空位召唤「发条兵」（2/6）。',
+      onTurnStart(g, c) { const free = [0, 1, 2, 3, 4, 5].filter((s) => !g.creatureAt(c.p, s)); if (free.length) g.summon(c.p, free[g.rand(free.length)], 'tok_clockbot'); } }),
+  // 兽王
+  C({ id: 'jungle_panther', el: 'special', cls: 'wild', tier: 5, cost: 5, name: '丛林猎豹', icon: '🐆', atk: 5, hp: 14, haste: true,
+      text: '迅捷：召唤当回合即可攻击。' }),
+  S({ id: 'frenzy', el: 'special', cls: 'wild', tier: 5, cost: 7, name: '狂暴', icon: '💢', target: 'ownCreature',
+      text: '一个己方生物攻击力永久 +5，并立即额外攻击一次。',
+      cast(g, p, t) { t.atk += 5; g.doAttack(t); } }),
+
   // ===================== 衍生物（不进卡组） =====================
   C({ id: 'tok_skeleton', el: 'special', token: true, cost: 0, name: '骷髅兵', icon: '☠️', atk: 3, hp: 6, text: '衍生物。' }),
+  C({ id: 'tok_clockbot', el: 'special', token: true, cost: 0, name: '发条兵', icon: '🪆', atk: 2, hp: 6, text: '衍生物。' }),
   C({ id: 'tok_wolf', el: 'special', token: true, cost: 0, name: '灰狼', icon: '🐺', atk: 3, hp: 8, text: '衍生物。' }),
 ];
 
 export const CARDS = Object.fromEntries(cardList.map((c) => [c.id, c]));
 export const CARD_LIST = cardList;
 
-/** 为一名玩家随机生成 20 张牌：每个元素每个档位抽 1 张 */
+/** 每个元素的手牌数 = 卡池分组数 */
+export const TIERS = 5;
+
+/** 为一名玩家随机生成 25 张牌：每个元素每组抽 1 张 */
 export function buildHand(cls, rand) {
   const hand = {};
   for (const el of ELEMENTS) {
     const pool = cardList.filter((c) => !c.token && c.el === el && (el !== 'special' || c.cls === cls));
     const picked = [];
-    for (let t = 1; t <= 4; t++) {
+    for (let t = 1; t <= TIERS; t++) {
       const tier = pool.filter((c) => c.tier === t);
       picked.push(tier[rand(tier.length)].id);
     }

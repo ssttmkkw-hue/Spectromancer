@@ -9,7 +9,7 @@ const HUMAN = 0, FOE = 1;
 
 const ui = {
   cls: 'radiant', diff: 'normal',
-  g: null, tab: 'fire', sel: null, waiting: null, busy: false, pops: new Set(), speed: 1,
+  g: null, sel: null, waiting: null, busy: false, pops: new Set(), speed: 1,
 };
 
 // ---------------- 工具 ----------------
@@ -17,14 +17,22 @@ function elColor(el, cls) { return el === 'special' ? CLASSES[cls].color : `var(
 function elIcon(el, cls) { return el === 'special' ? CLASSES[cls].icon : ELEMENT_INFO[el].icon; }
 function ownerCls(id, fallback) { const d = CARDS[id]; return d.cls || fallback; }
 
-function cardHTML(id, { off = false, sel = false, cls } = {}) {
+function cardHTML(id, { off = false, sel = false, cls, big = false } = {}) {
   const d = CARDS[id];
   const c = ownerCls(id, cls);
   const bottom = d.type === 'creature'
-    ? `<div class="st"><span class="a">⚔${d.atk}</span><span class="h">❤${d.hp}</span></div>`
-    : `<div class="ty">法术</div>`;
-  return `<button class="card ${off ? 'off' : ''} ${sel ? 'sel' : ''}" data-card="${id}" style="--ec:${elColor(d.el, c)}">
+    ? `<span class="st"><span class="a">${d.atk}</span>/<span class="h">${d.hp}</span></span>`
+    : `<span class="ty">法术</span>`;
+  return `<button class="card ${big ? 'big' : ''} ${off ? 'off' : ''} ${sel ? 'sel' : ''}" data-card="${id}" data-cls="${c}" style="--ec:${elColor(d.el, c)}">
     <span class="cost">${d.cost}</span><span class="ico">${d.icon}</span><span class="nm">${d.name}</span>${bottom}</button>`;
+}
+
+/** 5×5 牌表：每行一个元素，行首显示元素点数与增长 */
+function gridHTML(g, p, { sel = null, offFn } = {}) {
+  const pl = g.player(p);
+  return ELEMENTS.map((e) => `<div class="eh" style="--ec:${elColor(e, pl.cls)}"><span class="ti">${elIcon(e, pl.cls)}</span>
+      <span class="tv">${pl.mana[e]}</span><span class="tg">+${g.growthOf(p, e)}</span></div>` +
+    pl.hand[e].map((id) => cardHTML(id, { off: offFn(id), sel: sel === id, cls: pl.cls })).join('')).join('');
 }
 
 // ---------------- 菜单 ----------------
@@ -54,14 +62,14 @@ function startGame() {
   const others = Object.keys(CLASSES).filter((k) => k !== ui.cls);
   const foeCls = others[Math.floor(Math.random() * others.length)];
   ui.g = Game.create({ classes: [ui.cls, foeCls], names: ['你', 'AI·' + CLASSES[foeCls].name], ai: [false, true] });
-  ui.tab = 'fire'; ui.sel = null; ui.pops.clear();
+  ui.sel = null; ui.pops.clear();
   show('game');
   render();
   loop(ui.g);
 }
 
 async function loop(g) {
-  await banner(g.s.first === HUMAN ? '🎲' : '🤖', g.s.first === HUMAN ? '你先手' : '对手先手', '后手方开局额外获得 2 点基础元素', 1100);
+  await banner(g.s.first === HUMAN ? '🎲' : '🤖', g.s.first === HUMAN ? '你先手' : '对手先手', `后手方开局额外获得 ${RULES.SECOND_BONUS} 点基础元素`, 1100);
   while (ui.g === g && g.s.winner === null) {
     const p = g.cur;
     g.beginTurn();
@@ -135,7 +143,7 @@ function renderHero(p) {
   $('.hpbar i', el).style.width = `${(hp / pl.maxHp) * 100}%`;
   $('.hpbar span', el).textContent = `${hp} / ${pl.maxHp}`;
   const mr = $('.mana-row', el);
-  if (mr) mr.innerHTML = ELEMENTS.map((e) => `<div class="mana" style="--ec:${elColor(e, pl.cls)}">${elIcon(e, pl.cls)}${pl.mana[e]}<em>+${g.growthOf(p, e)}</em></div>`).join('');
+  if (mr) mr.innerHTML = ELEMENTS.map((e) => `<div class="mana" style="--ec:${elColor(e, pl.cls)}"><i>${elIcon(e, pl.cls)}</i>${pl.mana[e]}<em>+${g.growthOf(p, e)}</em></div>`).join('');
 }
 
 function validTargets() {
@@ -169,12 +177,7 @@ function renderBoard(p) {
 function renderHand() {
   const g = ui.g, pl = g.player(HUMAN);
   const myTurn = g.cur === HUMAN && !ui.busy;
-  $('#tabs').innerHTML = ELEMENTS.map((e) => {
-    const any = pl.hand[e].some((id) => g.playable(HUMAN, id));
-    return `<button class="tab ${e === ui.tab ? 'on' : ''} ${any ? 'has' : ''}" data-tab="${e}" style="--ec:${elColor(e, pl.cls)}">
-      <div><span class="ti">${elIcon(e, pl.cls)}</span> <span class="tv">${pl.mana[e]}</span></div><div class="tg">${elName(e, pl.cls)} +${g.growthOf(HUMAN, e)}</div></button>`;
-  }).join('');
-  $('#cards').innerHTML = pl.hand[ui.tab].map((id) => cardHTML(id, { off: !g.playable(HUMAN, id), sel: ui.sel === id, cls: pl.cls })).join('');
+  $('#grid').innerHTML = gridHTML(g, HUMAN, { sel: ui.sel, offFn: (id) => !g.playable(HUMAN, id) });
   const det = $('#detail');
   if (ui.sel) {
     const d = CARDS[ui.sel];
@@ -182,18 +185,15 @@ function renderHand() {
     det.innerHTML = `<div class="txt"><b>${d.name}</b>（${elName(d.el, pl.cls)} ${d.cost}）${d.type === 'creature' ? ` ⚔${d.atk} ❤${d.hp}` : ''}<br>${d.text}${need ? ` <b style="color:var(--gold)">→ ${need}</b>` : ''}</div>
       ${d.type === 'spell' && d.target === 'none' ? '<button class="btn primary" id="btn-cast">施放</button>' : ''}`;
   } else {
-    det.innerHTML = `<div class="txt">${myTurn ? '每回合可出 <b>1</b> 张牌，之后你的生物自左向右攻击。牌永不消耗，只看元素是否足够。' : '等待中…'}</div>`;
+    det.innerHTML = `<div class="txt">${myTurn ? '点牌选择，<b>长按</b>看说明。每回合出 1 张牌，之后生物自左向右攻击。' : '等待中…'}</div>`;
   }
   $('#btn-pass').disabled = !myTurn;
 }
 
 // ---------------- 交互 ----------------
 function initGameInput() {
-  $('#tabs').onclick = (e) => {
-    const b = e.target.closest('[data-tab]'); if (!b) return;
-    ui.tab = b.dataset.tab; render();
-  };
-  $('#cards').onclick = (e) => {
+  $('#grid').onclick = (e) => {
+    if (tipConsumed()) return;
     const b = e.target.closest('[data-card]'); if (!b) return;
     const id = b.dataset.card, g = ui.g;
     if (ui.busy || g.cur !== HUMAN) { showCard(id); return; }
@@ -206,6 +206,7 @@ function initGameInput() {
     if (e.target.id === 'btn-cast' && ui.sel) { const id = ui.sel; ui.sel = null; choose({ card: id, target: null }); }
   };
   const boardClick = (e) => {
+    if (tipConsumed()) return;
     const s = e.target.closest('.slot'); if (!s) return;
     const p = +s.dataset.p, slot = +s.dataset.slot, g = ui.g;
     if (ui.sel && !ui.busy) {
@@ -297,7 +298,7 @@ function closeSheet() { $('#sheet').classList.remove('open'); }
 
 function showCard(id) {
   const d = CARDS[id], g = ui.g;
-  openSheet(d.name, `<div class="big-card">${cardHTML(id, { cls: g ? g.player(HUMAN).cls : ui.cls })}<div>
+  openSheet(d.name, `<div class="big-card">${cardHTML(id, { big: true, cls: g ? g.player(HUMAN).cls : ui.cls })}<div>
     <p><b>${d.type === 'creature' ? '生物' : '法术'}</b> · ${elName(d.el, d.cls || (g ? g.player(HUMAN).cls : ui.cls))}元素 ${d.cost}</p>
     ${d.type === 'creature' ? `<p>攻击 ${d.atk} · 生命 ${d.hp}</p>` : ''}<p>${d.text}</p></div></div>`);
 }
@@ -307,16 +308,16 @@ function showCreature(c) {
   const st = [];
   if (c.frozen) st.push('❄ 冻结（跳过下一次攻击）');
   if (d.atk > 0 && c.born >= g.s.turn && !d.haste) st.push('💤 刚召唤，下回合起攻击');
-  openSheet(`${d.name}（${c.p === HUMAN ? '己方' : '敌方'}）`, `<div class="big-card">${cardHTML(c.id, { cls: g.player(c.p).cls })}<div>
+  openSheet(`${d.name}（${c.p === HUMAN ? '己方' : '敌方'}）`, `<div class="big-card">${cardHTML(c.id, { big: true, cls: g.player(c.p).cls })}<div>
     <p>当前：攻击 <b>${g.atkOf(c)}</b> · 生命 <b>${c.hp}</b> / ${c.maxHp}</p>
     <p>${d.text}</p>${st.map((s) => `<p style="color:var(--muted)">${s}</p>`).join('')}</div></div>`);
 }
 
 function showFoe() {
   const g = ui.g, pl = g.player(FOE);
-  openSheet(`${pl.name} 的 20 张牌`, ELEMENTS.map((e) => `<div class="foe-el"><div class="eh">${elIcon(e, pl.cls)} ${elName(e, pl.cls)}：${pl.mana[e]}（+${g.growthOf(FOE, e)}/回合）</div>
-    <div class="cards">${pl.hand[e].map((id) => cardHTML(id, { off: !g.canPay(FOE, id), cls: pl.cls })).join('')}</div></div>`).join(''));
-  $('#sheet-body').onclick = (e) => { const b = e.target.closest('[data-card]'); if (b) showCard(b.dataset.card); };
+  openSheet(`${pl.name} 的 25 张牌`, `<p style="margin:0 0 8px;color:var(--muted);font-size:12px">亮显 = 元素已足够。长按或点击查看说明。</p>
+    <div class="grid">${gridHTML(g, FOE, { offFn: (id) => !g.canPay(FOE, id) })}</div>`);
+  $('#sheet-body').onclick = (e) => { if (tipConsumed()) return; const b = e.target.closest('[data-card]'); if (b) showCard(b.dataset.card); };
 }
 
 function showLog() {
@@ -341,7 +342,7 @@ function showRules() {
     <h3>目标</h3>把对手英雄的 ${RULES.HERO_HP} 点生命打到 0。
     <h3>元素与牌</h3><ul>
       <li>每位法师掌握 5 种元素：火、水、风、土 + 一种职业元素。</li>
-      <li>开局每种元素各 4 张牌，共 20 张，<b>全部明牌、永不消耗</b>。只要该元素点数 ≥ 费用即可使用。</li>
+      <li>开局每种元素各 5 张牌，共 25 张，<b>全部明牌、永不消耗</b>。只要该元素点数 ≥ 费用即可使用。</li>
       <li>开局四种基础元素随机分配共 ${RULES.BASIC_START_TOTAL} 点，职业元素 ${RULES.SPECIAL_START} 点；后手额外 +${RULES.SECOND_BONUS}。</li>
       <li>每回合开始，<b>每种元素各 +1</b>（部分生物可额外增长）。点数可以一直攒着。</li></ul>
     <h3>回合流程</h3><ul>
@@ -354,8 +355,8 @@ function showRules() {
       <li>攻击力为 0 的生物（🛡）不会攻击，用来阻挡。</li>
       <li>❄ 冻结：跳过下一次攻击。</li></ul>
     <h3>操作</h3><ul>
-      <li>点元素标签切换牌页，点牌选中，再点高亮格子出牌；无目标法术点「施放」。</li>
-      <li>点场上生物查看详情；点「对手牌」查看对方全部 20 张牌和元素。</li></ul>`);
+      <li>下方 5×5 牌表一次看全所有牌，每行一个元素，行首是元素点数和每回合增长。点牌选中，再点高亮格子出牌；无目标法术点「施放」。</li><li><b>长按</b>任意卡牌或场上生物查看技能说明。</li>
+      <li>点场上生物查看详情；点「对手牌」查看对方全部 25 张牌和元素。</li></ul>`);
 }
 
 function showResult() {
@@ -369,5 +370,58 @@ function showResult() {
   $('#r-menu').onclick = () => { closeSheet(); show('menu'); };
 }
 
+// ---------------- 长按说明 ----------------
+const tip = { timer: 0, shown: false, consumed: false, x: 0, y: 0 };
+function tipConsumed() { const c = tip.consumed; tip.consumed = false; return c; }
+
+function tipContent(el) {
+  const g = ui.g;
+  if (el.dataset.card) {
+    const id = el.dataset.card, d = CARDS[id], cls = el.dataset.cls || (g ? g.player(HUMAN).cls : ui.cls);
+    return { color: elColor(d.el, cls), html: `<div class="th"><span class="ic">${d.icon}</span>${d.name}</div>
+      <div class="meta">${elName(d.el, cls)} ${d.cost} · ${d.type === 'creature' ? `生物 ⚔${d.atk} ❤${d.hp}` : '法术'}</div><div>${d.text}</div>` };
+  }
+  const slot = el.closest('.slot'); if (!slot || !g) return null;
+  const c = g.creatureAt(+slot.dataset.p, +slot.dataset.slot); if (!c) return null;
+  const d = CARDS[c.id], cls = g.player(c.p).cls;
+  const st = [c.frozen ? '❄ 冻结' : '', d.atk > 0 && c.born >= g.s.turn && !d.haste ? '💤 下回合起攻击' : ''].filter(Boolean).join(' · ');
+  return { color: elColor(d.el, ownerCls(c.id, cls)), html: `<div class="th"><span class="ic">${d.icon}</span>${d.name}<span class="meta">（${c.p === HUMAN ? '己方' : '敌方'}）</span></div>
+    <div class="meta">当前 ⚔${g.atkOf(c)} ❤${c.hp}/${c.maxHp}${st ? ' · ' + st : ''}</div><div>${d.text}</div>` };
+}
+
+function showTip(el) {
+  const t = tipContent(el); if (!t) return;
+  const box = $('#tip');
+  box.innerHTML = t.html;
+  box.style.setProperty('--ec', t.color);
+  const r = el.getBoundingClientRect(), bw = box.offsetWidth, bh = box.offsetHeight;
+  let left = Math.min(Math.max(8, r.left + r.width / 2 - bw / 2), innerWidth - bw - 8);
+  let top = r.top - bh - 10;
+  if (top < 8) top = r.bottom + 10;
+  box.style.left = `${left}px`; box.style.top = `${top}px`;
+  box.classList.add('show');
+  tip.shown = true;
+  navigator.vibrate?.(10);
+}
+function hideTip() {
+  clearTimeout(tip.timer);
+  if (tip.shown) { $('#tip').classList.remove('show'); tip.shown = false; tip.consumed = true; setTimeout(() => (tip.consumed = false), 400); }
+}
+function initLongPress() {
+  document.addEventListener('pointerdown', (e) => {
+    const el = e.target.closest('[data-card], .slot .cr');
+    if (!el) return;
+    tip.x = e.clientX; tip.y = e.clientY;
+    clearTimeout(tip.timer);
+    tip.timer = setTimeout(() => showTip(el), 380);
+  });
+  document.addEventListener('pointermove', (e) => {
+    if (!tip.shown && Math.hypot(e.clientX - tip.x, e.clientY - tip.y) > 10) clearTimeout(tip.timer);
+  });
+  for (const ev of ['pointerup', 'pointercancel']) document.addEventListener(ev, hideTip);
+  document.addEventListener('contextmenu', (e) => { if (e.target.closest('[data-card], .slot')) e.preventDefault(); });
+}
+
 initMenu();
 initGameInput();
+initLongPress();

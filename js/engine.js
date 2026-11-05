@@ -10,7 +10,7 @@ export const RULES = {
   SPECIAL_START: 2,      // 职业元素初始值
   GROWTH: 1,             // 每回合每种元素 +1
   FIRST_TURN_GROWTH: true, // 先手第一回合是否也增长元素
-  SECOND_BONUS: 2,       // 后手补偿：额外基础元素点数（随机分配）
+  SECOND_BONUS: 3,       // 后手补偿：额外基础元素点数（随机分配）
 };
 
 const opp = (p) => 1 - p;
@@ -110,7 +110,7 @@ export class Game {
   damage(c, amt, src = {}) {
     if (!c || c.hp <= 0) return 0;
     const d = CARDS[c.id];
-    amt = Math.max(0, amt - (d.reduce || 0));
+    amt = Math.max(0, amt - (d.reduce || 0) - (c.reduce || 0));
     if (amt <= 0) { this.emit({ t: 'dmg', p: c.p, slot: c.slot, n: 0 }); return 0; }
     const dealt = Math.min(amt, c.hp);
     c.hp -= amt;
